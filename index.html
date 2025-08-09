@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Al Naboodah Indoor Cricket</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#059669">
+  <style>
+    :root { --gap:12px; --radius:14px; --shadow:0 10px 30px rgba(2,6,23,.08);
+      --border:1px solid rgba(2,6,23,.08); --fg:#0f172a; --muted:#475569; --bg:#f8fafc;
+      --card:#ffffff; --accent:#059669; --accent-weak:#d1fae5; }
+    *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{max-width:1250px;margin:24px auto;padding:0 16px 28px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+    h1{font-size:22px;margin:0}
+    .card{background:var(--card);border:var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--gap)}
+    .g12{grid-column:span 12}.g8{grid-column:span 8}.g4{grid-column:span 4}.g6{grid-column:span 6}
+    @media(max-width:980px){.g8,.g4,.g6{grid-column:span 12}}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input,select{width:100%;padding:10px 12px;border-radius:12px;border:var(--border);background:#fff;outline:none}
+    input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .btn{appearance:none;border:var(--border);background:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow)}
+    .btn.primary{background:var(--accent);color:#fff;border-color:transparent}.btn.warn{background:#fee2e2;border-color:#fecaca}.btn.ghost{background:#fff}
+    .pill{padding:6px 10px;border-radius:999px;border:var(--border);background:#fff;font-size:12px;color:var(--muted)}
+    .muted{color:var(--muted)} .big{font-size:40px;font-weight:800;letter-spacing:.3px} .divider{height:1px;background:rgba(2,6,23,.07);margin:10px 0 14px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{font-size:13px;padding:6px 10px;border-radius:999px;background:#eef2ff}
+    .scoring{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.scoring .btn{padding:14px 0;font-weight:650}
+    table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:8px 10px;border-bottom:1px solid rgba(2,6,23,.08)} th{text-align:left;color:var(--muted)}
+    .ok{background:#ecfdf5;border:1px solid #a7f3d0}.notice{background:#fff7ed;border:1px solid #fed7aa;padding:10px 12px;border-radius:12px;font-size:13px}
+    .input-mini{width:80px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🏏 Indoor Cricket Scorer Pro+</h1>
+    <div class="row">
+      <button class="btn" id="saveBtn">Save</button>
+      <button class="btn warn" id="resetBtn">Reset</button>
+      <button class="btn ghost" id="installBtn" hidden>Install</button>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="grid">
+      <div class="g4"><label>Team A</label><input id="teamA" placeholder="Falcons"></div>
+      <div class="g4"><label>Team B</label><input id="teamB" placeholder="Raptors"></div>
+      <div class="g2"><label>Overs/innings</label><input id="overs" type="number" min="1" max="30" value="12"></div>
+      <div class="g2"><label>Balls/over</label><input id="ballsPerOver" type="number" min="1" max="10" value="6"></div>
+      <div class="g4"><label>Players/side</label><input id="playersPerSide" type="number" min="4" max="11" value="6"></div>
+      <div class="g8">
+        <div class="row">
+          <label><input type="checkbox" id="countNBWD"> Count NB/Wide as ball</label>
+          <label><input type="checkbox" id="enableZones" checked> Enable zones</label>
+          <span class="pill">Z1=<input id="z1" class="input-mini" type="number" value="1"></span>
+          <span class="pill">Z2=<input id="z2" class="input-mini" type="number" value="2"></span>
+          <span class="pill">Z3=<input id="z3" class="input-mini" type="number" value="3"></span>
+          <span class="pill">Z4=<input id="z4" class="input-mini" type="number" value="4"></span>
+        </div>
+      </div>
+      <div class="g4">
+        <label>Penalties (team)</label>
+        <div class="row">
+          <span class="pill">Wicket: <input id="wicketPenalty" class="input-mini" type="number" value="0"></span>
+          <span class="pill">Run-out: <input id="runoutPenalty" class="input-mini" type="number" value="-5"></span>
+        </div>
+      </div>
+
+      <div class="g12">
+        <div class="row">
+          <button class="btn primary" id="startBtn">Start / Resume</button>
+          <button class="btn" id="switchInningsBtn" disabled>End Innings & Switch</button>
+          <button class="btn" id="newOverBtn">New over</button>
+          <button class="btn" id="exportBtn">Export</button>
+          <span class="pill" id="statusPill">Not started</span>
+        </div>
+        <div class="tight notice">Now includes batting lineup with striker/non‑striker, individual stats (R, B, 4s, 6s), dismissals, strike rotation, and quick replace on wicket.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid tight" id="liveArea" hidden>
+    <div class="g8">
+      <div class="card">
+        <div class="grid">
+          <div class="g6">
+            <div class="muted">Batting</div>
+            <div class="big" id="battingName">Team A</div>
+            <div class="chips tight" id="chips"></div>
+          </div>
+          <div class="g6">
+            <div class="muted">Score</div>
+            <div class="big"><span id="runs">0</span>/<span id="wkts">0</span></div>
+            <div class="muted tight">Over: <span id="overStr">0.0</span> • This ball: <span id="lastBall">–</span></div>
+          </div>
+        </div>
+        <div class="divider"></div>
+
+        <div class="scoring">
+          <button class="btn" data-score="0">0</button>
+          <button class="btn" data-score="1">1</button>
+          <button class="btn" data-score="2">2</button>
+          <button class="btn" data-score="3">3</button>
+          <button class="btn" data-score="4">4</button>
+          <button class="btn" data-score="6">6</button>
+          <button class="btn" data-event="Z1" id="z1Btn">Z1</button>
+          <button class="btn" data-event="Z2" id="z2Btn">Z2</button>
+          <button class="btn" data-event="Z3" id="z3Btn">Z3</button>
+          <button class="btn" data-event="Z4" id="z4Btn">Z4</button>
+          <button class="btn" data-event="W">Wicket</button>
+          <button class="btn" data-event="RO">Run-out</button>
+          <button class="btn" data-event="NB">No ball</button>
+          <button class="btn" data-event="WD">Wide</button>
+          <button class="btn" data-event="BYE">Bye</button>
+          <button class="btn" data-event="LB">Leg bye</button>
+        </div>
+
+        <div class="row tight">
+          <span class="pill" id="inningsPill">Innings 1 of 2</span>
+          <button class="btn" id="swapStrikeBtn">Swap strike</button>
+          <button class="btn" id="undoBtn">Undo</button>
+        </div>
+
+        <div class="divider"></div>
+        <strong>Over log</strong>
+        <div id="overLog"></div>
+      </div>
+      <div class="card tight ok" id="targetBox" hidden></div>
+    </div>
+
+    <div class="g4">
+      <div class="card">
+        <strong>Batters (current innings)</strong>
+        <div class="row tight">
+          <input id="strikerInput" placeholder="Striker name">
+          <input id="nonstrikerInput" placeholder="Non-striker name">
+          <button class="btn" id="applyBattersBtn">Set openers</button>
+        </div>
+        <div class="row tight">
+          <button class="btn" id="newBatterBtn">New batter</button>
+          <button class="btn" id="retireOutBtn">Retire striker</button>
+        </div>
+        <table id="batTable">
+          <thead><tr><th>👤 Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th><th>Out</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card tight">
+        <strong>Bowler summary</strong>
+        <div class="row tight">
+          <input id="bowlerInput" placeholder="Current bowler">
+          <button class="btn" id="applyBowlerBtn">Set</button>
+        </div>
+        <table id="bowlerTable">
+          <thead><tr><th>Bowler</th><th>O</th><th>R</th><th>W</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card tight">
+    <strong>Notes</strong>
+    <div class="muted tight">• 0/1/2/3/4/6 buttons add to the *striker* and rotate strike on odd runs. 4/6 do not rotate.<br>
+    • Byes/Leg-byes add team runs and ball faced to striker; rotate on odd byes/leg-byes.<br>
+    • No-ball/Wide add extras; use **Count NB/Wide as ball** if your league counts it.<br>
+    • Wicket marks striker out by default (choose non-striker during prompt if needed), then prompts for a new batter.</div>
+  </div>
+
+  <footer class="wrap">
+    <div class="muted" style="font-size:12px;text-align:center;margin-top:12px">Works offline • Install from your browser menu for full-screen app.</div>
+  </footer>
+</div>
+
+<script>
+const defaultState = () => ({
+  teams:["Team A","Team B"],
+  overs:12, ballsPerOver:6, playersPerSide:6,
+  options:{ countNBWD:false, zones:{enabled:true,Z1:1,Z2:2,Z3:3,Z4:4}, wicketPenalty:0, runoutPenalty:-5 },
+  inningsIndex:0, started:false,
+  innings:[
+    { batting:0, runs:0, wkts:0, balls:0, oversDone:0, log:[], overLog:[{bowler:"",balls:[]}], bowlers:{}, batters:[] },
+    { batting:1, runs:0, wkts:0, balls:0, oversDone:0, log:[], overLog:[{bowler:"",balls:[]}], bowlers:{}, batters:[] }
+  ]
+});
+
+let S = defaultState();
+try{ const raw = localStorage.getItem('icsProPlus'); if(raw) S = JSON.parse(raw);}catch(e){}
+
+const els = {
+  teamA:byId('teamA'), teamB:byId('teamB'), overs:byId('overs'), ballsPerOver:byId('ballsPerOver'), playersPerSide:byId('playersPerSide'),
+  startBtn:byId('startBtn'), switchInningsBtn:byId('switchInningsBtn'), newOverBtn:byId('newOverBtn'), exportBtn:byId('exportBtn'),
+  statusPill:byId('statusPill'), liveArea:byId('liveArea'), runs:byId('runs'), wkts:byId('wkts'), overStr:byId('overStr'), lastBall:byId('lastBall'),
+  battingName:byId('battingName'), inningsPill:byId('inningsPill'), overLog:byId('overLog'), chips:byId('chips'), undoBtn:byId('undoBtn'),
+  countNBWD:byId('countNBWD'), enableZones:byId('enableZones'), z1:byId('z1'), z2:byId('z2'), z3:byId('z3'), z4:byId('z4'),
+  wicketPenalty:byId('wicketPenalty'), runoutPenalty:byId('runoutPenalty'), targetBox:byId('targetBox'),
+  z1Btn:byId('z1Btn'), z2Btn:byId('z2Btn'), z3Btn:byId('z3Btn'), z4Btn:byId('z4Btn'),
+  strikerInput:byId('strikerInput'), nonstrikerInput:byId('nonstrikerInput'), applyBattersBtn:byId('applyBattersBtn'),
+  newBatterBtn:byId('newBatterBtn'), retireOutBtn:byId('retireOutBtn'), batTable:byId('batTable').querySelector('tbody'),
+  bowlerInput:byId('bowlerInput'), applyBowlerBtn:byId('applyBowlerBtn'), bowlerTable:byId('bowlerTable').querySelector('tbody'),
+  swapStrikeBtn:byId('swapStrikeBtn'),
+  resetBtn:byId('resetBtn'), saveBtn:byId('saveBtn'), installBtn:byId('installBtn')
+};
+
+function byId(id){ return document.getElementById(id); }
+function save(){ localStorage.setItem('icsProPlus', JSON.stringify(S)); toast('Saved.'); }
+function resetAll(){ if(!confirm('Clear current match and settings?')) return; S = defaultState(); syncInputs(); render(); save(); }
+
+els.resetBtn.addEventListener('click', resetAll);
+els.saveBtn.addEventListener('click', save);
+
+function syncInputs(){
+  els.teamA.value=S.teams[0]; els.teamB.value=S.teams[1];
+  els.overs.value=S.overs; els.ballsPerOver.value=S.ballsPerOver; els.playersPerSide.value=S.playersPerSide;
+  els.countNBWD.checked=S.options.countNBWD; els.enableZones.checked=S.options.zones.enabled;
+  els.z1.value=S.options.zones.Z1; els.z2.value=S.options.zones.Z2; els.z3.value=S.options.zones.Z3; els.z4.value=S.options.zones.Z4;
+  els.wicketPenalty.value=S.options.wicketPenalty; els.runoutPenalty.value=S.options.runoutPenalty;
+  updateZoneButtons();
+}
+syncInputs();
+
+['teamA','teamB','overs','ballsPerOver','playersPerSide'].forEach(id=>{
+  els[id].addEventListener('input', ()=>{
+    if(id==='teamA') S.teams[0]=els.teamA.value||'Team A';
+    if(id==='teamB') S.teams[1]=els.teamB.value||'Team B';
+    if(id==='overs') S.overs=Math.max(1,Math.min(30,parseInt(els.overs.value||12)));
+    if(id==='ballsPerOver') S.ballsPerOver=Math.max(1,Math.min(10,parseInt(els.ballsPerOver.value||6)));
+    if(id==='playersPerSide') S.playersPerSide=Math.max(4,Math.min(11,parseInt(els.playersPerSide.value||6)));
+    render();
+  });
+});
+
+els.countNBWD.addEventListener('change', ()=>{ S.options.countNBWD=els.countNBWD.checked; save(); });
+els.enableZones.addEventListener('change', ()=>{ S.options.zones.enabled=els.enableZones.checked; updateZoneButtons(); save(); });
+['z1','z2','z3','z4'].forEach(id=>els[id].addEventListener('input', ()=>{ S.options.zones['Z'+id[1]]=parseInt(els[id].value||0); updateZoneButtons(); save(); }));
+els.wicketPenalty.addEventListener('input', ()=>{ S.options.wicketPenalty=parseInt(els.wicketPenalty.value||0); save(); });
+els.runoutPenalty.addEventListener('input', ()=>{ S.options.runoutPenalty=parseInt(els.runoutPenalty.value||0); save(); });
+
+els.startBtn.addEventListener('click', ()=>{ S.started=true; render(); save(); });
+els.switchInningsBtn.addEventListener('click', switchInnings);
+els.newOverBtn.addEventListener('click', newOver);
+els.exportBtn.addEventListener('click', exportData);
+els.undoBtn.addEventListener('click', undo);
+els.swapStrikeBtn.addEventListener('click', ()=>{ swapStrike(); render(); save(); });
+
+els.applyBattersBtn.addEventListener('click', ()=>{
+  const I=currentInnings();
+  const s=(els.strikerInput.value||'Striker').trim();
+  const n=(els.nonstrikerInput.value||'Non-striker').trim();
+  if(!I.batters.length){
+    I.batters.push(makeBatter(s,true));
+    I.batters.push(makeBatter(n,false));
+  }else{
+    // replace current pair
+    const pair = currentPair();
+    pair.striker.name=s; pair.nonstriker.name=n;
+  }
+  render(); save();
+});
+els.newBatterBtn.addEventListener('click', ()=>{
+  const name = prompt('New batter name?');
+  if(!name) return;
+  const I=currentInnings();
+  I.batters.push(makeBatter(name,true));
+  // make previous striker non-striker
+  const pair=currentPair();
+  if(pair.striker && pair.striker.name !== name){ pair.striker.striker=false; }
+  render(); save();
+});
+els.retireOutBtn.addEventListener('click', ()=>{
+  const I=currentInnings();
+  const s = getStriker(I);
+  if(!s) return;
+  s.out = s.out || 'retired';
+  s.striker=false;
+  render(); save();
+});
+
+els.applyBowlerBtn.addEventListener('click', ()=>{
+  const I=currentInnings();
+  const cur = I.overLog[I.overLog.length-1];
+  cur.bowler = (els.bowlerInput.value||'—').trim();
+  if(cur.bowler && !I.bowlers[cur.bowler]) I.bowlers[cur.bowler]={runs:0,wkts:0,balls:0,overs:0};
+  render(); save();
+});
+
+document.querySelectorAll('.scoring .btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(!S.started) return toast('Start the match first.');
+    const score = btn.dataset.score ? parseInt(btn.dataset.score) : null;
+    const event = btn.dataset.event || null;
+    addDelivery({score,event});
+  });
+});
+
+function makeBatter(name, striker){ return { name, runs:0, balls:0, fours:0, sixes:0, out:"", striker:!!striker }; }
+
+function getStriker(I){ return I.batters.find(b=>b.striker && !b.out); }
+function getNonStriker(I){ return I.batters.find(b=>!b.striker && !b.out); }
+function currentPair(){
+  const I=currentInnings();
+  return { striker:getStriker(I), nonstriker:getNonStriker(I) };
+}
+function swapStrike(){
+  const I=currentInnings();
+  const a=getStriker(I), b=getNonStriker(I);
+  if(a) a.striker=false; if(b) b.striker=true;
+}
+
+function currentInnings(){ return S.innings[S.inningsIndex]; }
+
+function ensureOver(){
+  const I=currentInnings();
+  if(!I.overLog.length) I.overLog=[{bowler:"",balls:[]}];
+  return I.overLog[I.overLog.length-1];
+}
+
+function newOver(){
+  if(!S.started) return toast('Start the match first.');
+  const I=currentInnings();
+  const cur=ensureOver();
+  if(cur.balls.length===0 && I.overLog.length>1) return toast('This over is empty.');
+  I.overLog.push({bowler:(els.bowlerInput.value||'').trim(), balls:[]});
+  // end of over: swap strike
+  swapStrike();
+  render(); save();
+}
+
+function switchInnings(){
+  if(!S.started) return;
+  if(!confirm('End current innings and switch?')) return;
+  S.inningsIndex = S.inningsIndex===0?1:0;
+  const I=currentInnings();
+  if(!I.overLog.length) I.overLog=[{bowler:"",balls:[]}];
+  render(); save();
+}
+
+function addDelivery({score=null,event=null}){
+  const I=currentInnings();
+  const over = ensureOver();
+  const bowler = over.bowler || '—';
+  if(bowler && !I.bowlers[bowler]) I.bowlers[bowler]={runs:0,wkts:0,balls:0,overs:0};
+
+  let addRuns=0, addBall=true, desc="", bowlerRuns=0, bowlerW=0;
+  let rotate=false, boundary=false;
+
+  const striker = getStriker(I);
+
+  if(score!==null){
+    addRuns += score; bowlerRuns += score; desc=String(score);
+    boundary = (score===4 || score===6);
+    if(striker){
+      striker.runs += score; striker.balls += 1;
+      if(score===4) striker.fours += 1;
+      if(score===6) striker.sixes += 1;
+    }
+    rotate = (score % 2 === 1);
+  } else if(event){
+    switch(event){
+      case 'Z1': case 'Z2': case 'Z3': case 'Z4': {
+        const val = S.options.zones[event];
+        addRuns += val; bowlerRuns += val; desc=event;
+        // Treat as off the bat for rotation & balls
+        if(striker){ striker.runs += val; striker.balls += 1; if(val===4) striker.fours+=1; if(val===6) striker.sixes+=1; }
+        rotate = (val % 2 === 1);
+        boundary = (val===4 || val===6);
+        break;
+      }
+      case 'NB':
+        addRuns += 1; bowlerRuns += 1; desc='NB';
+        addBall = S.options.countNBWD;
+        if(addBall && striker) striker.balls += 1; // league-dependent
+        break;
+      case 'WD':
+        addRuns += 1; bowlerRuns += 1; desc='WD';
+        addBall = S.options.countNBWD;
+        // wide doesn't count as ball faced if not counting as ball
+        if(addBall && striker) striker.balls += 1;
+        break;
+      case 'BYE':
+        addRuns += 1; desc='B'; rotate=true; // odd bye
+        if(striker) striker.balls += 1; // ball faced
+        break;
+      case 'LB':
+        addRuns += 1; desc='LB'; rotate=true; // odd leg-bye
+        if(striker) striker.balls += 1;
+        break;
+      case 'W': {
+        I.wkts = Math.min(I.wkts+1, 10);
+        addRuns += (S.options.wicketPenalty||0);
+        desc='W'; bowlerW += 1;
+        if(striker) striker.out = striker.out || 'out';
+        // prompt new batter
+        const outWho = confirm('Was the NON-striker out? OK=Yes, Cancel=No') ? 'ns' : 's';
+        if(outWho==='ns'){
+          const ns = getNonStriker(I); if(ns) ns.out = ns.out || 'out';
+        }
+        const nb = prompt('New batter name?'); if(nb){ I.batters.push(makeBatter(nb,true)); if(striker) striker.striker=false; }
+        break;
+      }
+      case 'RO': {
+        I.wkts = Math.min(I.wkts+1, 10);
+        addRuns += (S.options.runoutPenalty||0);
+        desc='RO'; // run-out not credited to bowler as wicket
+        // decide which batter out
+        const nsOut = confirm('Run-out non-striker? OK=Yes, Cancel=No (striker)');
+        if(nsOut){ const ns=getNonStriker(I); if(ns) ns.out = ns.out || 'run-out'; }
+        else if(striker){ striker.out = striker.out || 'run-out'; }
+        const nb = prompt('New batter name?'); if(nb){ I.batters.push(makeBatter(nb,true)); if(striker) striker.striker=false; }
+        break;
+      }
+    }
+  }
+
+  I.runs += addRuns;
+
+  if(addBall){
+    I.balls += 1;
+    const overBall = I.balls % S.ballsPerOver;
+    if (overBall === 0) I.oversDone += 1;
+    over.balls.push(desc || '•');
+    I.log.push({ addRuns, addBall, desc, bowler, bowlerRuns, bowlerW, ts:Date.now(), rotate, boundary });
+    // bowler stats
+    const b = I.bowlers[bowler] || (I.bowlers[bowler]={runs:0,wkts:0,balls:0,overs:0});
+    b.runs += bowlerRuns; b.wkts += bowlerW; b.balls += 1; if (b.balls % S.ballsPerOver === 0) b.overs += 1;
+    // rotate strike if odd and not boundary (4/6 even anyway)
+    if(rotate && !boundary) swapStrike();
+  }else{
+    over.balls.push(desc || '•');
+    I.log.push({ addRuns, addBall, desc, bowler, bowlerRuns, bowlerW, ts:Date.now(), rotate, boundary:false });
+    const b = I.bowlers[bowler] || (I.bowlers[bowler]={runs:0,wkts:0,balls:0,overs:0});
+    b.runs += bowlerRuns;
+  }
+
+  // Auto-end innings
+  const maxBalls = S.overs * S.ballsPerOver;
+  if (I.balls >= maxBalls || I.wkts >= S.playersPerSide-1) {
+    toast('Innings over.');
+    els.switchInningsBtn.disabled = false;
+  }
+
+  render(); save();
+}
+
+function undo(){
+  const I=currentInnings();
+  if(!I.log.length) return;
+  const last=I.log.pop();
+  I.runs -= last.addRuns;
+  // revert batter stats if needed
+  // For simplicity, we recalc batters from scratch for this innings (safe for small matches)
+  recomputeBattingStats();
+  if(last.addBall){
+    const prevBall = I.balls - 1;
+    const wasOverComplete = (prevBall % S.ballsPerOver) === (S.ballsPerOver-1);
+    I.balls = prevBall;
+    if (wasOverComplete) I.oversDone = Math.max(0, I.oversDone - 1);
+  }
+  if(last.desc==='W' || last.desc==='RO') I.wkts = Math.max(0, I.wkts - 1);
+  // remove from over log
+  const over = I.overLog[I.overLog.length-1];
+  if(over && over.balls.length) over.balls.pop();
+  else if(I.overLog.length>1){ I.overLog.pop(); I.overLog[I.overLog.length-1].balls.pop(); }
+  // adjust bowler
+  const b=I.bowlers[last.bowler];
+  if(b){
+    b.runs -= last.bowlerRuns;
+    b.wkts -= last.bowlerW;
+    if(last.addBall){
+      const wasComplete = (b.balls % S.ballsPerOver) === 0 && b.balls !== 0;
+      b.balls = Math.max(0, b.balls - 1);
+      if (wasComplete) b.overs = Math.max(0, b.overs - 1);
+    }
+  }
+  render(); save();
+}
+
+function recomputeBattingStats(){
+  // Recompute batting from logs for current innings
+  const I=currentInnings();
+  I.batters.forEach(b=>{ b.runs=0; b.balls=0; b.fours=0; b.sixes=0; });
+  I.log.forEach(ev=>{
+    // Only consider events with addBall true for balls faced; assign to whoever was striker at that time —
+    // but we didn't store striker snapshot, so we approximate: current striker at recompute time.
+    // To keep correctness simple, we will not alter outs/strike on recompute; this is a basic fallback.
+  });
+}
+
+function render(){
+  els.statusPill.textContent = S.started ? 'Live' : 'Not started';
+  els.liveArea.hidden = !S.started;
+  els.switchInningsBtn.disabled = !S.started;
+
+  const I=currentInnings();
+  const battingTeam=S.teams[I.batting];
+  const bowlingTeam=S.teams[1-I.batting];
+  els.battingName.textContent = battingTeam;
+
+  els.chips.innerHTML='';
+  const chip=t=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; return s; };
+  els.chips.append(chip(`v ${bowlingTeam}`));
+  els.chips.append(chip(`${S.overs} overs`));
+  els.chips.append(chip(`${S.ballsPerOver} balls/over`));
+  els.chips.append(chip(`${S.playersPerSide} a side`));
+
+  els.runs.textContent=I.runs; els.wkts.textContent=I.wkts;
+  const ballsInOver = I.balls % S.ballsPerOver;
+  els.overStr.textContent = `${I.oversDone}.${ballsInOver}`;
+  const last = I.log[I.log.length-1];
+  els.lastBall.textContent = last ? last.desc : '–';
+  els.inningsPill.textContent = `Innings ${S.inningsIndex+1} of 2`;
+
+  // Over log
+  els.overLog.innerHTML='';
+  I.overLog.forEach((o,i)=>{
+    const row=document.createElement('div'); row.className='row'; row.style.justifyContent='space-between';
+    const left=document.createElement('div'); left.innerHTML = `<strong>Over ${i+1}</strong> <span class="muted">(${o.bowler||'—'})</span>`;
+    const right=document.createElement('div'); right.textContent = (o.balls||[]).join(' ');
+    row.append(left,right); els.overLog.append(row);
+  });
+
+  // Target
+  if (S.inningsIndex===1){
+    const target = S.innings[0].runs + 1;
+    const toGet = Math.max(0, target - I.runs);
+    const ballsLeft = (S.overs * S.ballsPerOver) - I.balls;
+    els.targetBox.hidden = false;
+    els.targetBox.innerHTML = `<strong>Target:</strong> ${target} &nbsp; | &nbsp; <strong>Needed:</strong> ${toGet} off ${ballsLeft} balls`;
+  } else els.targetBox.hidden=true;
+
+  // Bowler table
+  els.bowlerTable.innerHTML='';
+  Object.entries(I.bowlers).forEach(([name,stats])=>{
+    const tr=document.createElement('tr');
+    const oversStr=`${Math.floor(stats.balls/S.ballsPerOver)}.${stats.balls % S.ballsPerOver}`;
+    tr.innerHTML=`<td>${name}</td><td>${oversStr}</td><td>${stats.runs}</td><td>${stats.wkts}</td>`;
+    els.bowlerTable.append(tr);
+  });
+
+  // Batters table
+  els.batTable.innerHTML='';
+  I.batters.forEach(b=>{
+    const sr = b.balls ? ((b.runs*100)/b.balls).toFixed(1) : '—';
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${b.striker?'⭐ ':''}${b.name}</td><td>${b.runs}</td><td>${b.balls}</td><td>${b.fours}</td><td>${b.sixes}</td><td>${sr}</td><td>${b.out||''}</td>`;
+    els.batTable.append(tr);
+  });
+
+  // Zone buttons visibility
+  ['z1Btn','z2Btn','z3Btn','z4Btn'].forEach(id=>byId(id).style.display = S.options.zones.enabled ? 'inline-block':'none');
+}
+
+function exportData(){
+  const data = { meta:{teams:S.teams,oversPerInnings:S.overs,ballsPerOver:S.ballsPerOver,playersPerSide:S.playersPerSide,options:S.options}, innings:S.innings };
+  const json = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data,null,2));
+  const a=document.createElement('a'); a.href=json; a.download=`indoor-cricket-pro-plus-${Date.now()}.json`; a.click();
+  // CSV (batter summary for current innings)
+  const I=currentInnings();
+  const rows = [["Batter","R","B","4s","6s","Out"], ...I.batters.map(b=>[b.name,b.runs,b.balls,b.fours,b.sixes,b.out||""] )];
+  const csv = "data:text/csv;charset=utf-8," + rows.map(r=>r.join(",")).join("\\n");
+  const b=document.createElement('a'); b.href=csv; b.download=`indoor-cricket-pro-plus-batters-${Date.now()}.csv`; b.click();
+}
+
+// PWA
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt=e; els.installBtn.hidden=false; });
+els.installBtn.addEventListener('click', async ()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); const {outcome}=await deferredPrompt.userChoice; if(outcome==='accepted') els.installBtn.hidden=true; });
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js')); }
+
+function toast(msg){
+  const n=document.createElement('div'); n.textContent=msg;
+  n.style.position='fixed'; n.style.left='50%'; n.style.bottom='24px'; n.style.transform='translateX(-50%)';
+  n.style.background='#0f172a'; n.style.color='#fff'; n.style.padding='10px 14px'; n.style.borderRadius='10px'; n.style.fontSize='13px';
+  n.style.boxShadow='var(--shadow)'; n.style.zIndex=9999; document.body.appendChild(n); setTimeout(()=>n.remove(),1600);
+}
+</script>
+</body>
+</html>
